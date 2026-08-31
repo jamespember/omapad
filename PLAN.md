@@ -67,10 +67,77 @@ omapad/
 
 **Persistence:**
 
-- `~/.local/state/omapad/note.txt` — text pane content. Plain text, atomic writes via `FileView`.
-- `~/.local/state/omapad/sketch.json` — sketch pane strokes as `[{ points: [[x,y], ...] }, ...]`. Rendered on load into the canvas. Also atomic writes.
+- Text pane content lives at `settings.notePath` (see Settings below). Default `~/.local/state/omapad/note.txt`. Plain text, atomic writes via `FileView`.
+- `~/.local/state/omapad/sketch.json` — sketch pane strokes as `[{ points: [[x,y], ...] }, ...]`. Rendered on load into the canvas. Always local (never synced to the vault). Atomic writes.
 
 Rationale for JSON strokes over PNG: vector data replays crisply at any DPI and lets us do undo. PNG is generated on-the-fly when copying.
+
+Rationale for keeping sketches local while text is configurable: text is the thing you want in your knowledge system (Obsidian, Logseq, plain notes). Sketches are ephemeral — you draw, you copy, you move on. If v2 needs sketch-to-vault-as-PNG, we can add it.
+
+## Settings
+
+Per the Omarchy shell contract, settings live inline on the plugin entry in `~/.config/omarchy/shell.json` under the top-level `plugins: []` array. The plugin reads them from shell.json via `FileView` with `watchChanges: true`, so edits take effect without a shell restart.
+
+**Schema (v1):**
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `notePath` | string | `~/.local/state/omapad/note.txt` | File where the text pane persists. `~` and `$HOME` are expanded. Parent directory is created if missing. If the file has a Markdown extension, it's still written as plain text (Markdown formatting isn't rendered in the pane — it's just what you type). |
+
+**Example shell.json entry for the Obsidian use case:**
+
+```json
+{
+  "plugins": [
+    {
+      "id": "jamespember.omapad",
+      "notePath": "~/Documents/Obsidian/MyVault/Scratchpad.md"
+    }
+  ]
+}
+```
+
+**Manifest declaration (so the settings UI can render a field later):**
+
+```json
+{
+  "overlay": {
+    "defaults": { "notePath": "~/.local/state/omapad/note.txt" },
+    "schema": [
+      { "key": "notePath", "type": "string", "label": "Note file path" }
+    ]
+  }
+}
+```
+
+**Reading in QML (rough shape):**
+
+```qml
+FileView {
+  path: Quickshell.env("HOME") + "/.config/omarchy/shell.json"
+  watchChanges: true
+  onLoaded: settings = extractSettings(text())
+  onFileChanged: reload()
+}
+
+function extractSettings(raw) {
+  var config = JSON.parse(raw)
+  var entries = (config && config.plugins) || []
+  for (var i = 0; i < entries.length; i++) {
+    if (entries[i].id === "jamespember.omapad") return entries[i]
+  }
+  return {}
+}
+```
+
+When `notePath` changes at runtime, we flush the current buffer to the old path, then swap and load from the new path (empty file if it doesn't exist yet). No data loss on retarget.
+
+**Future settings (not v1):**
+
+- `sketchPath` — where to persist strokes JSON
+- `sketchAttachmentDir` — where to write PNGs on copy (so Obsidian users can paste a wikilink)
+- `openOnStart` — always open with cursor at end vs. cursor at start
+- `wordWrap` — toggle
 
 **Copy pipeline:**
 
