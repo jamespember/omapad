@@ -1,6 +1,3 @@
-// Pure helpers for Omapad persistence and settings.
-// No QML imports so we can unit-test in a shell later if needed.
-
 function expandPath(path, home) {
   var p = String(path || "")
   if (!p) return p
@@ -18,8 +15,6 @@ function dirname(path) {
   return slash <= 0 ? "/" : p.substring(0, slash)
 }
 
-// Look up the plugin's own entry in shell.json plugins[]. Returns {} on
-// miss so callers can treat it as "no user settings, use manifest defaults".
 function extractPluginSettings(rawJson, pluginId) {
   try {
     var config = JSON.parse(String(rawJson || "{}"))
@@ -29,14 +24,10 @@ function extractPluginSettings(rawJson, pluginId) {
       var entry = entries[i]
       if (entry && String(entry.id) === key) return entry
     }
-  } catch (e) {
-    // ignore — treat as no settings
-  }
+  } catch (e) {}
   return {}
 }
 
-// Sketch strokes on disk are [ [ [x,y], [x,y], ... ], ... ].
-// A stroke of fewer than 2 points is a stray click, drop it.
 function normalizeStrokes(raw) {
   try {
     var parsed = JSON.parse(String(raw || "[]"))
@@ -63,11 +54,6 @@ function serializeStrokes(strokes) {
   return JSON.stringify(Array.isArray(strokes) ? strokes : [])
 }
 
-// Read shell.json, upsert our plugin entry with the given settings, and
-// return the serialized JSON ready to write back. Values that are null,
-// undefined, or empty strings are removed from the entry (so the plugin
-// falls back to its manifest defaults). Array/object values with .length === 0
-// are also treated as "unset".
 function updatePluginSettings(rawJson, pluginId, updates) {
   var config
   try {
@@ -103,10 +89,6 @@ function updatePluginSettings(rawJson, pluginId, updates) {
   return JSON.stringify(config, null, 2) + "\n"
 }
 
-// Tokenize a shell-style command line into an argv array. Supports single
-// and double quotes; no variable/backtick expansion. Adequate for the
-// openCommand field where users type things like:
-//   xdg-open "obsidian://open?path={pathUri}"
 function shellSplit(input) {
   var s = String(input || "")
   var out = []
@@ -134,9 +116,6 @@ function shellSplit(input) {
   return out
 }
 
-// Join an argv array back into a shell-like display string. Arguments
-// containing whitespace or quote chars get double-quoted; embedded double
-// quotes are backslash-escaped.
 function shellJoin(argv) {
   if (!Array.isArray(argv)) return ""
   return argv.map(function(arg) {
@@ -153,6 +132,9 @@ if (typeof module !== "undefined") {
     dirname: dirname,
     extractPluginSettings: extractPluginSettings,
     normalizeStrokes: normalizeStrokes,
-    serializeStrokes: serializeStrokes
+    serializeStrokes: serializeStrokes,
+    updatePluginSettings: updatePluginSettings,
+    shellSplit: shellSplit,
+    shellJoin: shellJoin
   }
 }

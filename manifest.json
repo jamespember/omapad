@@ -14,7 +14,7 @@
   "overlay": {
     "defaults": {
       "notePath": "~/.local/state/omapad/note.txt",
-      "openCommand": ["xdg-open", "{path}"]
+      "openCommand": ["uwsm-app", "--", "omawrite", "{path}"]
     },
     "schema": [
       { "key": "notePath", "type": "string", "label": "Note file path" },

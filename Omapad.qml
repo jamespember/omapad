@@ -6,25 +6,17 @@ import qs.Commons
 import qs.Ui
 import "Storage.js" as Storage
 
-// Omapad — a lightning-fast scratchpad overlay for Omarchy.
-// Text pane on the left, sketch pane on the right. Both persist to disk.
-// Summon and dismiss via `omarchy-shell shell toggle io.github.jamespember.omapad`.
 Item {
   id: root
 
-  // Injected by the shell when it summons the overlay.
   property var shell: null
   property var manifest: null
 
   property bool opened: false
   property bool showSettings: false
 
-  // Raw notePath as the user wrote it in shell.json (may still contain ~).
-  // Kept alongside the expanded absolute `notePath` so the settings editor
-  // can round-trip user input without expanding surprises.
   property string rawNotePath: "~/.local/state/omapad/note.txt"
 
-  // ---- theme (borrowed from menu tokens, like clipboard/emojis) ------------
   property color background: Color.menu.background
   property color foreground: Color.menu.text
   property color border: Color.menu.border
@@ -39,29 +31,20 @@ Item {
   property int cardWidth: Math.min(Style.space(875), panel.width - Style.gapsOut * 2)
   property int cardHeight: Math.min(Style.space(600), panel.height - Style.gapsOut * 2)
 
-  // ---- paths ---------------------------------------------------------------
   property string home: Quickshell.env("HOME")
   property string shellConfigPath: home + "/.config/omarchy/shell.json"
   property string defaultNotePath: home + "/.local/state/omapad/note.txt"
   property string sketchPath: home + "/.local/state/omapad/sketch.json"
-  // notePath is the current effective location — either user-configured or default.
   property string notePath: defaultNotePath
   property string copyTextTmpPath: "/tmp/omapad-copy-text.txt"
   property string copySketchTmpPath: "/tmp/omapad-copy-sketch.png"
 
-  // openCommand: argv template used by the "open file" button. Two
-  // placeholders are substituted: {path} → absolute path, {pathUri} →
-  // URI-encoded path (for obsidian:// and similar scheme handlers).
-  // Default: omawrite (Omarchy's stock Markdown editor). Falls through to
-  // xdg-open if omawrite isn't on PATH — see the README for other recipes.
-  readonly property var defaultOpenCommand: ["omawrite", "{path}"]
+  readonly property var defaultOpenCommand: ["uwsm-app", "--", "omawrite", "{path}"]
   property var openCommand: defaultOpenCommand
 
-  // ---- shared content state (bound by the panes) ---------------------------
   property string textContent: ""
   property var strokes: []
 
-  // ---- toast feedback ------------------------------------------------------
   property string toastMessage: ""
   Timer {
     id: toastTimer
@@ -74,9 +57,7 @@ Item {
     toastTimer.restart()
   }
 
-  // ---- lifecycle -----------------------------------------------------------
   function open(payloadJson) {
-    // Always open into the notes view; settings is a per-summon menu.
     root.showSettings = false
     root.opened = true
     Qt.callLater(function() {
@@ -102,21 +83,16 @@ Item {
     }
   }
 
-  // ---- copy pipeline -------------------------------------------------------
-  // Text: base64-encode in argv, decode + wl-copy in the shell. base64 output
-  // is shell-safe so no quoting hell.
   function copyText() {
     if (!root.textContent || root.textContent.length === 0) {
       root.toast("Nothing to copy")
       return
     }
-    // Qt.btoa on strings is deprecated in Qt 6; hand it a Uint8Array of UTF-8
-    // bytes. TextEncoder is available in Quickshell's JS engine.
     var encoded
     try {
       encoded = Qt.btoa(new TextEncoder().encode(root.textContent))
     } catch (e) {
-      encoded = Qt.btoa(root.textContent)  // fallback if TextEncoder is missing
+      encoded = Qt.btoa(root.textContent)
     }
     Quickshell.execDetached(["sh", "-c", "printf %s " + encoded + " | base64 -d | wl-copy"])
     root.toast("Text copied")
@@ -126,9 +102,6 @@ Item {
     if (sketchPane.item) sketchPane.item.copyAsPng()
   }
 
-  // Open the note using the configured openCommand template. Placeholders
-  // {path} and {pathUri} are substituted with the absolute path and its
-  // URI-encoded form respectively. See README for editor recipes.
   function openFile() {
     if (textPane.item) textPane.item.flush()
     var path = root.notePath
@@ -148,16 +121,12 @@ Item {
     root.close()
   }
 
-  // Open the parent directory in the user's file manager.
   function openFileLocation() {
     Quickshell.execDetached(["xdg-open", Storage.dirname(root.notePath)])
     root.toast("Opening folder")
     root.close()
   }
 
-  // ---- settings ------------------------------------------------------------
-  // Read our own entry from ~/.config/omarchy/shell.json. If notePath changes
-  // we flush pending writes to the old location, then swap.
   function applySettings(raw) {
     var settings = Storage.extractPluginSettings(raw, "io.github.jamespember.omapad")
 
@@ -178,8 +147,6 @@ Item {
     }
   }
 
-  // Save updates to our entry in ~/.config/omarchy/shell.json. FileView's
-  // watcher then reloads and applySettings picks the changes up live.
   function saveSettings(updates) {
     var current = shellConfigFile.text()
     var next = Storage.updatePluginSettings(current, "io.github.jamespember.omapad", updates)
@@ -197,12 +164,7 @@ Item {
     onFileChanged: reload()
   }
 
-  // Ensure parent directories exist for the note and sketch files. Runs once
-  // at startup and again whenever notePath changes.
-  Process {
-    id: mkdirProc
-    running: false
-  }
+  Process { id: mkdirProc; running: false }
   function ensureDirs() {
     mkdirProc.command = ["mkdir", "-p",
       Storage.dirname(root.notePath),
@@ -212,7 +174,6 @@ Item {
   Component.onCompleted: ensureDirs()
   onNotePathChanged: ensureDirs()
 
-  // ---- overlay window ------------------------------------------------------
   PanelWindow {
     id: panel
     visible: root.opened
@@ -228,7 +189,6 @@ Item {
       color: root.scrim
     }
 
-    // Click outside the card to close.
     MouseArea {
       anchors.fill: parent
       onClicked: root.close()
@@ -244,7 +204,6 @@ Item {
       borderSpec: root.borderSpec
       padding: root.contentMargin
 
-      // Eat clicks on the card so the outside-close MouseArea doesn't fire.
       MouseArea { anchors.fill: parent; onClicked: {} }
 
       Column {
@@ -255,7 +214,6 @@ Item {
         anchors.leftMargin: card.contentLeftInset
         spacing: root.contentSpacing
 
-        // Title row: title on the left, toast + icon actions on the right.
         Item {
           id: titleRow
           width: parent.width
@@ -272,9 +230,6 @@ Item {
             anchors.left: parent.left
           }
 
-          // Right-side action buttons. Absolutely anchored — chained
-          // right-to-left — so Row layout quirks can't hide them. When
-          // settings is open, file/folder hide and the cog stays as a toggle.
           Rectangle {
             id: openFolderBtn
             visible: !root.showSettings
@@ -292,7 +247,7 @@ Item {
             Text {
               id: openFolderLabel
               anchors.centerIn: parent
-              text: "󰝰"  // mdi-folder-open (U+F0770)
+              text: "󰝰"
               color: openFolderMouse.containsMouse
                 ? root.selectedText
                 : root.foreground
@@ -327,7 +282,7 @@ Item {
             Text {
               id: openFileLabel
               anchors.centerIn: parent
-              text: "󰈔"  // mdi-file-document (U+F0214)
+              text: "󰈔"
               color: openFileMouse.containsMouse
                 ? root.selectedText
                 : root.foreground
@@ -344,8 +299,6 @@ Item {
             }
           }
 
-          // Cog — toggles the settings pane. Anchors to the right when
-          // settings is open (file/folder are hidden), otherwise to their left.
           Rectangle {
             id: settingsBtn
             anchors.right: root.showSettings ? parent.right : openFileBtn.left
@@ -363,7 +316,7 @@ Item {
             Text {
               id: settingsLabel
               anchors.centerIn: parent
-              text: "󰒓"  // mdi-cog (U+F0493)
+              text: "󰒓"
               color: settingsMouse.containsMouse || root.showSettings
                 ? root.selectedText
                 : root.foreground
@@ -380,7 +333,6 @@ Item {
             }
           }
 
-          // Toast slides in to the left of the button group.
           Text {
             text: root.toastMessage
             color: root.foreground
@@ -396,13 +348,11 @@ Item {
           }
         }
 
-        // Content area — either the two panes (notes) or the settings form.
         Item {
           id: contentArea
           width: parent.width
           height: parent.height - Style.space(28) - root.contentSpacing
 
-          // Notes view: text + sketch split.
           Item {
             id: notesView
             anchors.fill: parent
@@ -436,9 +386,6 @@ Item {
             }
           }
 
-          // Settings view. Loaded on demand and kept alive after that so
-          // reopening is instant. Explicit width/height so the loaded item
-          // gets sized reliably.
           Loader {
             id: settingsView
             width: contentArea.width

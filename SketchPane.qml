@@ -5,15 +5,12 @@ import qs.Commons
 import qs.Ui
 import "Storage.js" as Storage
 
-// The sketch pane — freehand canvas with undo, clear, copy-as-PNG.
-// Strokes persist as JSON so undo works across reopens.
 Item {
   id: root
 
   property var host: null
   property bool loaded: false
 
-  // Stroke in progress. When the mouse comes back up, we push it onto host.strokes.
   property var currentStroke: null
   property bool drawing: false
 
@@ -89,7 +86,6 @@ Item {
     onLoadFailed: {
       root.loaded = true
       if (root.host && root.host.strokes.length === 0) {
-        // already empty; still repaint to clear
         canvas.requestPaint()
       }
     }
@@ -100,7 +96,6 @@ Item {
     anchors.margins: Style.spacing.md
     spacing: Style.spacing.sm
 
-    // Header row: label, then Clear + Copy buttons.
     Item {
       width: parent.width
       height: Style.space(26)
@@ -120,7 +115,6 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: Style.space(6)
 
-        // Clear
         Rectangle {
           height: Style.space(22)
           width: clearLabel.width + Style.space(14)
@@ -148,7 +142,6 @@ Item {
           }
         }
 
-        // Copy
         Rectangle {
           height: Style.space(22)
           width: copyLabel.width + Style.space(16)
@@ -180,7 +173,6 @@ Item {
       }
     }
 
-    // Canvas card.
     Rectangle {
       id: canvasFrame
       width: parent.width
@@ -219,7 +211,6 @@ Item {
           ctx.beginPath()
           ctx.moveTo(stroke[0][0], stroke[0][1])
           if (stroke.length === 1) {
-            // Single-point stroke: draw a tiny dot so the click registers visually.
             ctx.lineTo(stroke[0][0] + 0.5, stroke[0][1] + 0.5)
           } else {
             for (var i = 1; i < stroke.length; i++)
@@ -237,7 +228,7 @@ Item {
           onPressed: function(mouse) {
             root.currentStroke = [[mouse.x, mouse.y]]
             root.drawing = true
-            root.forceActiveFocus()  // so Ctrl+Z below works
+            root.forceActiveFocus()
             canvas.requestPaint()
           }
 
@@ -266,7 +257,6 @@ Item {
     }
   }
 
-  // Ctrl+Z anywhere on the pane. Also Escape closes.
   Keys.priority: Keys.BeforeItem
   Keys.onPressed: function(event) {
     if (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier)) {

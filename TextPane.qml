@@ -4,17 +4,14 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// The text pane — persistent single-note editor.
-// Autosaves 400ms after last keystroke, and flushes on close/copy.
 Item {
   id: root
 
-  property var host: null  // Omapad root
+  property var host: null
   property bool loaded: false
 
   function focusEditor() {
     textEdit.forceActiveFocus()
-    // Put the cursor at the end so hitting Super+N continues where you left off.
     textEdit.cursorPosition = textEdit.length
   }
 
@@ -38,10 +35,6 @@ Item {
     onTriggered: root.commit()
   }
 
-  // The persistent note file. Path is bound to host.notePath so a settings
-  // change swaps the source; FileView reloads and we push the new content
-  // into the editor. Runtime path changes flush the old buffer first — see
-  // Omapad.qml applySettings().
   FileView {
     id: noteFile
     path: root.host ? root.host.notePath : ""
@@ -58,7 +51,7 @@ Item {
     }
     onLoadFailed: {
       root.loaded = true
-      if (textEdit.text.length > 0) return  // don't wipe an unsaved buffer
+      if (textEdit.text.length > 0) return
       textEdit.text = ""
       if (root.host) root.host.textContent = ""
     }
@@ -69,7 +62,6 @@ Item {
     anchors.margins: Style.spacing.md
     spacing: Style.spacing.sm
 
-    // Header: label on the left, copy button on the right.
     Item {
       width: parent.width
       height: Style.space(26)
@@ -121,7 +113,6 @@ Item {
       }
     }
 
-    // Editor in a scrollable Flickable.
     Rectangle {
       width: parent.width
       height: parent.height - Style.space(26) - Style.spacing.sm
@@ -159,7 +150,6 @@ Item {
             saveTimer.restart()
           }
 
-          // Keep cursor visible when it moves past the viewport edges.
           onCursorRectangleChanged: {
             var top = cursorRectangle.y
             var bottom = cursorRectangle.y + cursorRectangle.height
@@ -169,7 +159,6 @@ Item {
               scroll.contentY = top
           }
 
-          // Intercept global shortcuts before the editor consumes them.
           Keys.priority: Keys.BeforeItem
           Keys.onPressed: function(event) {
             var ctrlShift = (Qt.ControlModifier | Qt.ShiftModifier)
