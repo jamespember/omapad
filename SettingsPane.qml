@@ -8,6 +8,9 @@ import "Storage.js" as Storage
 // Replaces the notes area while root.showSettings is true.
 Item {
   id: root
+  // Fill whatever Loader/parent placed us into. Without this, children with
+  // `parent.right`/`parent.bottom` anchors resolve to zero and render nothing.
+  anchors.fill: parent
 
   property var host: null
 
@@ -26,15 +29,22 @@ Item {
     { label: "System", value: ["xdg-open", "{path}"] }
   ]
 
-  // Hydrate the draft fields from the current host state whenever we open.
-  // Called from Omapad root when showSettings flips on.
+  // Hydrate the draft fields from the current host state. Assigns both the
+  // draft property AND the TextInput.text directly because user typing breaks
+  // the property binding — a re-hydrate on reopen must forcibly restore.
   function hydrate() {
     if (!host) return
     // Prefer the raw user-configured value over the resolved absolute path
     // so the ~ stays as ~ in the editor.
-    draftNotePath = host.rawNotePath || host.notePath || ""
+    var nextNotePath = host.rawNotePath || host.notePath || ""
     var cmd = Array.isArray(host.openCommand) ? host.openCommand : host.defaultOpenCommand
-    draftOpenCommand = Storage.shellJoin(cmd)
+    var nextOpenCommand = Storage.shellJoin(cmd)
+
+    draftNotePath = nextNotePath
+    draftOpenCommand = nextOpenCommand
+    notePathField.text = nextNotePath
+    openCommandField.text = nextOpenCommand
+
     Qt.callLater(function() { notePathField.forceActiveFocus() })
   }
 
@@ -56,8 +66,18 @@ Item {
     if (host) host.showSettings = false
   }
 
-  // Rehydrate on every show so external edits to shell.json are reflected.
-  onVisibleChanged: if (visible) hydrate()
+  // Hydrate when the host is first wired up (via Loader.onLoaded) and again
+  // every time the settings pane is toggled back on, so external edits to
+  // shell.json are reflected.
+  onHostChanged: if (host) hydrate()
+
+  Connections {
+    target: root.host
+    enabled: root.host !== null
+    function onShowSettingsChanged() {
+      if (root.host && root.host.showSettings) root.hydrate()
+    }
+  }
 
   // Form fields, top-anchored so they don't fight with the actions row.
   Column {
@@ -287,6 +307,5 @@ Item {
           onClicked: root.save()
         }
       }
-    }
   }
 }

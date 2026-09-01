@@ -437,10 +437,12 @@ Item {
           }
 
           // Settings view. Loaded on demand and kept alive after that so
-          // reopening is instant.
+          // reopening is instant. Explicit width/height so the loaded item
+          // gets sized reliably.
           Loader {
             id: settingsView
-            anchors.fill: parent
+            width: contentArea.width
+            height: contentArea.height
             visible: root.showSettings
             active: root.showSettings || item !== null
             source: Qt.resolvedUrl("SettingsPane.qml")
