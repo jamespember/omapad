@@ -151,6 +151,7 @@ Item {
     var current = shellConfigFile.text()
     var next = Storage.updatePluginSettings(current, "io.github.jamespember.omapad", updates)
     shellConfigFile.setText(next)
+    root.applySettings(next)
     root.toast("Settings saved")
   }
 
