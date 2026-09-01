@@ -37,26 +37,46 @@ Both panes also have visible `copy` buttons. The sketch pane has a `clear` butto
 
 Settings live inline on the plugin entry in `~/.config/omarchy/shell.json`.
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `notePath` | `~/.local/state/omapad/note.txt` | File where the text pane persists. `~` and `$HOME` are expanded. |
-
-**Example — point Omapad at an Obsidian vault:**
-
-```json
-{
-  "plugins": [
-    {
-      "id": "io.github.jamespember.omapad",
-      "notePath": "~/Documents/Obsidian/MyVault/Scratchpad.md"
-    }
-  ]
-}
-```
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `notePath` | string | `~/.local/state/omapad/note.txt` | File where the text pane persists. `~` and `$HOME` are expanded. |
+| `openCommand` | array of strings | `["xdg-open", "{path}"]` | argv template for the "open file" button. `{path}` is replaced with the absolute path; `{pathUri}` with the URI-encoded path. |
 
 Changes to `shell.json` are picked up live — no shell restart needed. If you change `notePath` while typing, the current buffer is flushed to the old path before the new one loads.
 
 Sketches always live locally at `~/.local/state/omapad/sketch.json`. If you want a sketch in your vault, hit the copy button and paste.
+
+### Recipes
+
+**Obsidian** — hand the file back to Obsidian via its URI scheme. Works even when `xdg-mime` mis-detects `.md` as `text/plain`:
+
+```json
+{
+  "id": "io.github.jamespember.omapad",
+  "notePath": "~/Documents/MyVault/Scratchpad.md",
+  "openCommand": ["xdg-open", "obsidian://open?path={pathUri}"]
+}
+```
+
+**Typora**:
+
+```json
+{ "id": "...", "openCommand": ["typora", "{path}"] }
+```
+
+**VS Code**:
+
+```json
+{ "id": "...", "openCommand": ["code", "{path}"] }
+```
+
+**Terminal editor (kitty + nvim)**:
+
+```json
+{ "id": "...", "openCommand": ["kitty", "nvim", "{path}"] }
+```
+
+**Default (system handler)** — omit `openCommand` and `xdg-open` will pick whatever your system associates with the file. Fine when your mime associations are set up correctly.
 
 ## Remove
 

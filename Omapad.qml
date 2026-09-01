@@ -43,6 +43,13 @@ Item {
   property string copyTextTmpPath: "/tmp/omapad-copy-text.txt"
   property string copySketchTmpPath: "/tmp/omapad-copy-sketch.png"
 
+  // openCommand: argv template used by the "open file" button. Two
+  // placeholders are substituted: {path} → absolute path, {pathUri} →
+  // URI-encoded path (for obsidian:// and similar scheme handlers).
+  // Default: xdg-open respects the user's mime associations.
+  readonly property var defaultOpenCommand: ["xdg-open", "{path}"]
+  property var openCommand: defaultOpenCommand
+
   // ---- shared content state (bound by the panes) ---------------------------
   property string textContent: ""
   property var strokes: []
@@ -103,21 +110,24 @@ Item {
     if (sketchPane.item) sketchPane.item.copyAsPng()
   }
 
-  // Open the note in the user's default handler. Flushes the buffer first
-  // so the file exists on disk.
-  //
-  // .md files get routed through the obsidian:// URI scheme rather than a
-  // direct file open, because xdg-mime often mis-detects them as text/plain
-  // (which then dispatches to a terminal-only editor that opens invisibly).
-  // Obsidian's URI handler is installed by Obsidian itself and is a stable
-  // route into the app for anyone using it.
+  // Open the note using the configured openCommand template. Placeholders
+  // {path} and {pathUri} are substituted with the absolute path and its
+  // URI-encoded form respectively. See README for editor recipes.
   function openFile() {
     if (textPane.item) textPane.item.flush()
     var path = root.notePath
-    var target = path.toLowerCase().endsWith(".md")
-      ? "obsidian://open?path=" + encodeURIComponent(path)
-      : path
-    Quickshell.execDetached(["xdg-open", target])
+    var uri = encodeURIComponent(path)
+    var template = Array.isArray(root.openCommand) && root.openCommand.length > 0
+      ? root.openCommand
+      : root.defaultOpenCommand
+    var argv = []
+    for (var i = 0; i < template.length; i++) {
+      var arg = String(template[i])
+      arg = arg.split("{path}").join(path)
+      arg = arg.split("{pathUri}").join(uri)
+      argv.push(arg)
+    }
+    Quickshell.execDetached(argv)
     root.toast("Opening file")
     root.close()
   }
@@ -134,6 +144,7 @@ Item {
   // we flush pending writes to the old location, then swap.
   function applySettings(raw) {
     var settings = Storage.extractPluginSettings(raw, "io.github.jamespember.omapad")
+
     var candidate = settings.notePath
     var nextPath = candidate
       ? Storage.expandPath(String(candidate), root.home)
@@ -141,6 +152,12 @@ Item {
     if (nextPath && nextPath !== root.notePath) {
       if (textPane.item) textPane.item.flush()
       root.notePath = nextPath
+    }
+
+    if (Array.isArray(settings.openCommand) && settings.openCommand.length > 0) {
+      root.openCommand = settings.openCommand
+    } else {
+      root.openCommand = root.defaultOpenCommand
     }
   }
 

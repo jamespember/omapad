@@ -13,10 +13,12 @@
   },
   "overlay": {
     "defaults": {
-      "notePath": "~/.local/state/omapad/note.txt"
+      "notePath": "~/.local/state/omapad/note.txt",
+      "openCommand": ["xdg-open", "{path}"]
     },
     "schema": [
-      { "key": "notePath", "type": "string", "label": "Note file path" }
+      { "key": "notePath", "type": "string", "label": "Note file path" },
+      { "key": "openCommand", "type": "array", "label": "Open-file command (argv template; {path} and {pathUri} are substituted)" }
     ]
   }
 }
