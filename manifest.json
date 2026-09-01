@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.jamespember.omapad",
+  "name": "Omapad",
+  "version": "0.1.0",
+  "author": "James Pember",
+  "license": "MIT",
+  "description": "A lightning-fast scratchpad overlay for Omarchy: jot text and sketch, summoned with a single key.",
+  "kinds": ["overlay"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "Omapad.qml"
+  },
+  "overlay": {
+    "defaults": {
+      "notePath": "~/.local/state/omapad/note.txt"
+    },
+    "schema": [
+      { "key": "notePath", "type": "string", "label": "Note file path" }
+    ]
+  }
+}
