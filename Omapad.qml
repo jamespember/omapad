@@ -204,6 +204,7 @@ Item {
 
         // Title row: title on the left, toast + icon actions on the right.
         Item {
+          id: titleRow
           width: parent.width
           height: Style.space(28)
 
@@ -218,91 +219,87 @@ Item {
             anchors.left: parent.left
           }
 
-          Row {
+          // Right-side action buttons. Absolutely anchored — chained
+          // right-to-left — so Row layout quirks can't hide them.
+          Rectangle {
+            id: openFolderBtn
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(6)
+            height: Style.space(22)
+            width: openFolderLabel.width + Style.space(16)
+            radius: root.cornerRadius
+            color: openFolderMouse.containsMouse
+              ? Util.alpha(root.border, 0.35)
+              : "transparent"
+            border.color: Util.alpha(root.border, 0.4)
+            border.width: 1
 
-            // Toast slides in beside the icons when a message is active.
             Text {
-              text: root.toastMessage
-              color: root.foreground
-              opacity: root.toastMessage.length > 0 ? 0.7 : 0
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              height: Style.space(22)
-              verticalAlignment: Text.AlignVCenter
-              rightPadding: Style.space(4)
-              Behavior on opacity {
-                NumberAnimation { duration: 200 }
-              }
-            }
-
-            // Open note file (xdg-open — Obsidian for .md, editor otherwise).
-            Rectangle {
-              id: openFileBtn
-              height: Style.space(22)
-              width: openFileLabel.width + Style.space(16)
-              radius: root.cornerRadius
-              color: openFileMouse.containsMouse
-                ? Util.alpha(root.border, 0.35)
-                : "transparent"
-              border.color: Util.alpha(root.border, 0.4)
-              border.width: 1
-
-              Text {
-                id: openFileLabel
-                anchors.centerIn: parent
-                // Material Design nerd font glyph — same range clipboard/emojis use.
-                // 󰈔 = mdi-file-document (U+F0214)
-                text: "󰈔"
-                color: openFileMouse.containsMouse
-                  ? root.selectedText
-                  : root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-              }
-
-              MouseArea {
-                id: openFileMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.openFile()
-              }
-            }
-
-            // Open the note's parent directory in the file manager.
-            Rectangle {
-              id: openFolderBtn
-              height: Style.space(22)
-              width: openFolderLabel.width + Style.space(16)
-              radius: root.cornerRadius
+              id: openFolderLabel
+              anchors.centerIn: parent
+              text: "󰝰"  // mdi-folder-open (U+F0770)
               color: openFolderMouse.containsMouse
-                ? Util.alpha(root.border, 0.35)
-                : "transparent"
-              border.color: Util.alpha(root.border, 0.4)
-              border.width: 1
+                ? root.selectedText
+                : root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
 
-              Text {
-                id: openFolderLabel
-                anchors.centerIn: parent
-                // 󰝰 = mdi-folder-open (U+F0770)
-                text: "󰝰"
-                color: openFolderMouse.containsMouse
-                  ? root.selectedText
-                  : root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-              }
+            MouseArea {
+              id: openFolderMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.openFileLocation()
+            }
+          }
 
-              MouseArea {
-                id: openFolderMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.openFileLocation()
-              }
+          Rectangle {
+            id: openFileBtn
+            anchors.right: openFolderBtn.left
+            anchors.rightMargin: Style.space(6)
+            anchors.verticalCenter: parent.verticalCenter
+            height: Style.space(22)
+            width: openFileLabel.width + Style.space(16)
+            radius: root.cornerRadius
+            color: openFileMouse.containsMouse
+              ? Util.alpha(root.border, 0.35)
+              : "transparent"
+            border.color: Util.alpha(root.border, 0.4)
+            border.width: 1
+
+            Text {
+              id: openFileLabel
+              anchors.centerIn: parent
+              text: "󰈔"  // mdi-file-document (U+F0214)
+              color: openFileMouse.containsMouse
+                ? root.selectedText
+                : root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+
+            MouseArea {
+              id: openFileMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.openFile()
+            }
+          }
+
+          // Toast slides in to the left of the button group.
+          Text {
+            text: root.toastMessage
+            color: root.foreground
+            opacity: root.toastMessage.length > 0 ? 0.7 : 0
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            anchors.right: openFileBtn.left
+            anchors.rightMargin: Style.space(8)
+            anchors.verticalCenter: parent.verticalCenter
+            Behavior on opacity {
+              NumberAnimation { duration: 200 }
             }
           }
         }

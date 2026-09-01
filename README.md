@@ -64,6 +64,23 @@ Sketches always live locally at `~/.local/state/omapad/sketch.json`. If you want
 omarchy plugin remove io.github.jamespember.omapad
 ```
 
+## Hacking
+
+The plugin folder can be symlinked from a working checkout into
+`~/.config/omarchy/plugins/io.github.jamespember.omapad` for edit-in-place
+development. Saving a source file triggers a manifest rescan
+(`Local plugin changed, reloading:` in the shell log), but because the
+manifest has `keepLoaded: true` for zero-latency summon, the running
+overlay window is **not** re-instantiated. To pick up QML changes, restart
+the shell:
+
+```sh
+omarchy-restart-shell
+```
+
+Small tweaks (labels, colors) can wait until the next summon; anything
+structural (layout, new elements) needs the restart.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
