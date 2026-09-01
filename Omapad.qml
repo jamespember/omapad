@@ -87,13 +87,36 @@ Item {
       root.toast("Nothing to copy")
       return
     }
-    var encoded = Qt.btoa(root.textContent)
+    // Qt.btoa on strings is deprecated in Qt 6; hand it a Uint8Array of UTF-8
+    // bytes. TextEncoder is available in Quickshell's JS engine.
+    var encoded
+    try {
+      encoded = Qt.btoa(new TextEncoder().encode(root.textContent))
+    } catch (e) {
+      encoded = Qt.btoa(root.textContent)  // fallback if TextEncoder is missing
+    }
     Quickshell.execDetached(["sh", "-c", "printf %s " + encoded + " | base64 -d | wl-copy"])
     root.toast("Text copied")
   }
 
   function copySketch() {
     if (sketchPane.item) sketchPane.item.copyAsPng()
+  }
+
+  // Open the note in the user's default handler (Obsidian for .md, editor
+  // otherwise). Flushes the buffer first so the file exists on disk.
+  function openFile() {
+    if (textPane.item) textPane.item.flush()
+    Quickshell.execDetached(["xdg-open", root.notePath])
+    root.toast("Opening file")
+    root.close()
+  }
+
+  // Open the parent directory in the user's file manager.
+  function openFileLocation() {
+    Quickshell.execDetached(["xdg-open", Storage.dirname(root.notePath)])
+    root.toast("Opening folder")
+    root.close()
   }
 
   // ---- settings ------------------------------------------------------------
@@ -179,7 +202,7 @@ Item {
         anchors.leftMargin: card.contentLeftInset
         spacing: root.contentSpacing
 
-        // Title row
+        // Title row: title on the left, toast + icon actions on the right.
         Item {
           width: parent.width
           height: Style.space(28)
@@ -195,17 +218,81 @@ Item {
             anchors.left: parent.left
           }
 
-          // Toast, right-aligned in the title row.
-          Text {
-            text: root.toastMessage
-            color: root.foreground
-            opacity: root.toastMessage.length > 0 ? 0.85 : 0
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            anchors.verticalCenter: parent.verticalCenter
+          Row {
             anchors.right: parent.right
-            Behavior on opacity {
-              NumberAnimation { duration: 200 }
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(6)
+
+            // Toast slides in beside the icons when a message is active.
+            Text {
+              text: root.toastMessage
+              color: root.foreground
+              opacity: root.toastMessage.length > 0 ? 0.7 : 0
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              anchors.verticalCenter: parent.verticalCenter
+              rightPadding: Style.space(4)
+              Behavior on opacity {
+                NumberAnimation { duration: 200 }
+              }
+            }
+
+            // Open note file (xdg-open — Obsidian for .md, editor otherwise).
+            Rectangle {
+              id: openFileBtn
+              anchors.verticalCenter: parent.verticalCenter
+              height: Style.space(24)
+              width: Style.space(28)
+              radius: root.cornerRadius
+              color: openFileMouse.containsMouse
+                ? Util.alpha(root.border, 0.35)
+                : "transparent"
+
+              Text {
+                anchors.centerIn: parent
+                text: "\uF15C"  // nf-fa-file_text_o
+                color: root.foreground
+                opacity: openFileMouse.containsMouse ? 1.0 : 0.65
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.title
+              }
+
+              MouseArea {
+                id: openFileMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.openFile()
+              }
+            }
+
+            // Open the note's parent directory in the file manager.
+            Rectangle {
+              id: openFolderBtn
+              anchors.verticalCenter: parent.verticalCenter
+              height: Style.space(24)
+              width: Style.space(28)
+              radius: root.cornerRadius
+              color: openFolderMouse.containsMouse
+                ? Util.alpha(root.border, 0.35)
+                : "transparent"
+
+              Text {
+                anchors.centerIn: parent
+                text: "\uF07C"  // nf-fa-folder_open_o
+                color: root.foreground
+                opacity: openFolderMouse.containsMouse ? 1.0 : 0.65
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.title
+              }
+
+              MouseArea {
+                id: openFolderMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.openFileLocation()
+              }
             }
           }
         }
