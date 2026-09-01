@@ -103,11 +103,21 @@ Item {
     if (sketchPane.item) sketchPane.item.copyAsPng()
   }
 
-  // Open the note in the user's default handler (Obsidian for .md, editor
-  // otherwise). Flushes the buffer first so the file exists on disk.
+  // Open the note in the user's default handler. Flushes the buffer first
+  // so the file exists on disk.
+  //
+  // .md files get routed through the obsidian:// URI scheme rather than a
+  // direct file open, because xdg-mime often mis-detects them as text/plain
+  // (which then dispatches to a terminal-only editor that opens invisibly).
+  // Obsidian's URI handler is installed by Obsidian itself and is a stable
+  // route into the app for anyone using it.
   function openFile() {
     if (textPane.item) textPane.item.flush()
-    Quickshell.execDetached(["xdg-open", root.notePath])
+    var path = root.notePath
+    var target = path.toLowerCase().endsWith(".md")
+      ? "obsidian://open?path=" + encodeURIComponent(path)
+      : path
+    Quickshell.execDetached(["xdg-open", target])
     root.toast("Opening file")
     root.close()
   }
