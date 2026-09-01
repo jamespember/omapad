@@ -32,7 +32,7 @@ Title-row icons: cog (settings) · file (open in editor) · folder (open locatio
 
 ## Configure
 
-Hit the cog to edit settings in-app, or edit `~/.config/omarchy/shell.json` directly:
+Hit the cog to edit settings in-app.
 
 | Key | Default | |
 |-----|---------|---|
