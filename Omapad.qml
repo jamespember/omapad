@@ -17,6 +17,12 @@ Item {
   property var manifest: null
 
   property bool opened: false
+  property bool showSettings: false
+
+  // Raw notePath as the user wrote it in shell.json (may still contain ~).
+  // Kept alongside the expanded absolute `notePath` so the settings editor
+  // can round-trip user input without expanding surprises.
+  property string rawNotePath: "~/.local/state/omapad/note.txt"
 
   // ---- theme (borrowed from menu tokens, like clipboard/emojis) ------------
   property color background: Color.menu.background
@@ -46,8 +52,9 @@ Item {
   // openCommand: argv template used by the "open file" button. Two
   // placeholders are substituted: {path} → absolute path, {pathUri} →
   // URI-encoded path (for obsidian:// and similar scheme handlers).
-  // Default: xdg-open respects the user's mime associations.
-  readonly property var defaultOpenCommand: ["xdg-open", "{path}"]
+  // Default: omawrite (Omarchy's stock Markdown editor). Falls through to
+  // xdg-open if omawrite isn't on PATH — see the README for other recipes.
+  readonly property var defaultOpenCommand: ["omawrite", "{path}"]
   property var openCommand: defaultOpenCommand
 
   // ---- shared content state (bound by the panes) ---------------------------
@@ -69,6 +76,8 @@ Item {
 
   // ---- lifecycle -----------------------------------------------------------
   function open(payloadJson) {
+    // Always open into the notes view; settings is a per-summon menu.
+    root.showSettings = false
     root.opened = true
     Qt.callLater(function() {
       if (textPane.item) textPane.item.focusEditor()
@@ -84,6 +93,13 @@ Item {
   function toggle() {
     if (root.opened) close()
     else open("{}")
+  }
+
+  function toggleSettings() {
+    root.showSettings = !root.showSettings
+    if (!root.showSettings && textPane.item) {
+      Qt.callLater(function() { textPane.item.focusEditor() })
+    }
   }
 
   // ---- copy pipeline -------------------------------------------------------
@@ -146,6 +162,7 @@ Item {
     var settings = Storage.extractPluginSettings(raw, "io.github.jamespember.omapad")
 
     var candidate = settings.notePath
+    root.rawNotePath = candidate ? String(candidate) : "~/.local/state/omapad/note.txt"
     var nextPath = candidate
       ? Storage.expandPath(String(candidate), root.home)
       : root.defaultNotePath
@@ -159,6 +176,15 @@ Item {
     } else {
       root.openCommand = root.defaultOpenCommand
     }
+  }
+
+  // Save updates to our entry in ~/.config/omarchy/shell.json. FileView's
+  // watcher then reloads and applySettings picks the changes up live.
+  function saveSettings(updates) {
+    var current = shellConfigFile.text()
+    var next = Storage.updatePluginSettings(current, "io.github.jamespember.omapad", updates)
+    shellConfigFile.setText(next)
+    root.toast("Settings saved")
   }
 
   FileView {
@@ -247,9 +273,11 @@ Item {
           }
 
           // Right-side action buttons. Absolutely anchored — chained
-          // right-to-left — so Row layout quirks can't hide them.
+          // right-to-left — so Row layout quirks can't hide them. When
+          // settings is open, file/folder hide and the cog stays as a toggle.
           Rectangle {
             id: openFolderBtn
+            visible: !root.showSettings
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             height: Style.space(22)
@@ -283,6 +311,7 @@ Item {
 
           Rectangle {
             id: openFileBtn
+            visible: !root.showSettings
             anchors.right: openFolderBtn.left
             anchors.rightMargin: Style.space(6)
             anchors.verticalCenter: parent.verticalCenter
@@ -315,6 +344,42 @@ Item {
             }
           }
 
+          // Cog — toggles the settings pane. Anchors to the right when
+          // settings is open (file/folder are hidden), otherwise to their left.
+          Rectangle {
+            id: settingsBtn
+            anchors.right: root.showSettings ? parent.right : openFileBtn.left
+            anchors.rightMargin: root.showSettings ? 0 : Style.space(6)
+            anchors.verticalCenter: parent.verticalCenter
+            height: Style.space(22)
+            width: settingsLabel.width + Style.space(16)
+            radius: root.cornerRadius
+            color: settingsMouse.containsMouse || root.showSettings
+              ? Util.alpha(root.border, 0.35)
+              : "transparent"
+            border.color: Util.alpha(root.border, 0.4)
+            border.width: 1
+
+            Text {
+              id: settingsLabel
+              anchors.centerIn: parent
+              text: "󰒓"  // mdi-cog (U+F0493)
+              color: settingsMouse.containsMouse || root.showSettings
+                ? root.selectedText
+                : root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+
+            MouseArea {
+              id: settingsMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.toggleSettings()
+            }
+          }
+
           // Toast slides in to the left of the button group.
           Text {
             text: root.toastMessage
@@ -322,7 +387,7 @@ Item {
             opacity: root.toastMessage.length > 0 ? 0.7 : 0
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
-            anchors.right: openFileBtn.left
+            anchors.right: settingsBtn.left
             anchors.rightMargin: Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
             Behavior on opacity {
@@ -331,36 +396,55 @@ Item {
           }
         }
 
-        // Panes
+        // Content area — either the two panes (notes) or the settings form.
         Item {
+          id: contentArea
           width: parent.width
           height: parent.height - Style.space(28) - root.contentSpacing
 
-          Row {
+          // Notes view: text + sketch split.
+          Item {
+            id: notesView
             anchors.fill: parent
-            spacing: 0
+            visible: !root.showSettings
 
-            Loader {
-              id: textPane
-              width: (parent.width - Style.space(1)) / 2
-              height: parent.height
-              source: Qt.resolvedUrl("TextPane.qml")
-              onLoaded: item.host = root
-            }
+            Row {
+              anchors.fill: parent
+              spacing: 0
 
-            Rectangle {
-              width: Style.space(1)
-              height: parent.height
-              color: Util.alpha(root.border, 0.28)
-            }
+              Loader {
+                id: textPane
+                width: (parent.width - Style.space(1)) / 2
+                height: parent.height
+                source: Qt.resolvedUrl("TextPane.qml")
+                onLoaded: item.host = root
+              }
 
-            Loader {
-              id: sketchPane
-              width: (parent.width - Style.space(1)) / 2
-              height: parent.height
-              source: Qt.resolvedUrl("SketchPane.qml")
-              onLoaded: item.host = root
+              Rectangle {
+                width: Style.space(1)
+                height: parent.height
+                color: Util.alpha(root.border, 0.28)
+              }
+
+              Loader {
+                id: sketchPane
+                width: (parent.width - Style.space(1)) / 2
+                height: parent.height
+                source: Qt.resolvedUrl("SketchPane.qml")
+                onLoaded: item.host = root
+              }
             }
+          }
+
+          // Settings view. Loaded on demand and kept alive after that so
+          // reopening is instant.
+          Loader {
+            id: settingsView
+            anchors.fill: parent
+            visible: root.showSettings
+            active: root.showSettings || item !== null
+            source: Qt.resolvedUrl("SettingsPane.qml")
+            onLoaded: item.host = root
           }
         }
       }

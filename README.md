@@ -35,18 +35,26 @@ Both panes also have visible `copy` buttons. The sketch pane has a `clear` butto
 
 ## Configure
 
-Settings live inline on the plugin entry in `~/.config/omarchy/shell.json`.
+The easiest way to configure Omapad is the **cog icon** in the top-right of the overlay — it opens a small settings form with a note-path field, an editor command field, and one-click preset chips for Omawrite, Obsidian, Typora, VS Code, Neovim, and the system default. Save applies immediately.
+
+Settings are stored inline on the plugin entry in `~/.config/omarchy/shell.json` and can also be hand-edited there:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `notePath` | string | `~/.local/state/omapad/note.txt` | File where the text pane persists. `~` and `$HOME` are expanded. |
-| `openCommand` | array of strings | `["xdg-open", "{path}"]` | argv template for the "open file" button. `{path}` is replaced with the absolute path; `{pathUri}` with the URI-encoded path. |
+| `openCommand` | array of strings | `["omawrite", "{path}"]` | argv template for the "open file" button. `{path}` is replaced with the absolute path; `{pathUri}` with the URI-encoded path. |
 
 Changes to `shell.json` are picked up live — no shell restart needed. If you change `notePath` while typing, the current buffer is flushed to the old path before the new one loads.
 
 Sketches always live locally at `~/.local/state/omapad/sketch.json`. If you want a sketch in your vault, hit the copy button and paste.
 
 ### Recipes
+
+**Omawrite (default)** — Omarchy Quattro's stock Markdown editor:
+
+```json
+{ "id": "io.github.jamespember.omapad", "openCommand": ["omawrite", "{path}"] }
+```
 
 **Obsidian** — hand the file back to Obsidian via its URI scheme. Works even when `xdg-mime` mis-detects `.md` as `text/plain`:
 
@@ -70,13 +78,13 @@ Sketches always live locally at `~/.local/state/omapad/sketch.json`. If you want
 { "id": "...", "openCommand": ["code", "{path}"] }
 ```
 
-**Terminal editor (kitty + nvim)**:
+**Neovim (kitty + nvim)**:
 
 ```json
 { "id": "...", "openCommand": ["kitty", "nvim", "{path}"] }
 ```
 
-**Default (system handler)** — omit `openCommand` and `xdg-open` will pick whatever your system associates with the file. Fine when your mime associations are set up correctly.
+**System handler** — set `openCommand` to `["xdg-open", "{path}"]` and it'll dispatch through your mime associations.
 
 ## Remove
 

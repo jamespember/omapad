@@ -63,6 +63,90 @@ function serializeStrokes(strokes) {
   return JSON.stringify(Array.isArray(strokes) ? strokes : [])
 }
 
+// Read shell.json, upsert our plugin entry with the given settings, and
+// return the serialized JSON ready to write back. Values that are null,
+// undefined, or empty strings are removed from the entry (so the plugin
+// falls back to its manifest defaults). Array/object values with .length === 0
+// are also treated as "unset".
+function updatePluginSettings(rawJson, pluginId, updates) {
+  var config
+  try {
+    config = JSON.parse(String(rawJson || "{}"))
+  } catch (e) {
+    config = {}
+  }
+  if (!config || typeof config !== "object") config = {}
+  if (!Array.isArray(config.plugins)) config.plugins = []
+
+  var idx = -1
+  for (var i = 0; i < config.plugins.length; i++) {
+    var entry = config.plugins[i]
+    if (entry && String(entry.id) === String(pluginId)) { idx = i; break }
+  }
+  if (idx < 0) {
+    config.plugins.push({ id: pluginId })
+    idx = config.plugins.length - 1
+  }
+
+  var target = config.plugins[idx]
+  target.id = pluginId
+  for (var key in updates) {
+    var value = updates[key]
+    var empty = value === undefined
+      || value === null
+      || (typeof value === "string" && value.length === 0)
+      || (Array.isArray(value) && value.length === 0)
+    if (empty) delete target[key]
+    else target[key] = value
+  }
+
+  return JSON.stringify(config, null, 2) + "\n"
+}
+
+// Tokenize a shell-style command line into an argv array. Supports single
+// and double quotes; no variable/backtick expansion. Adequate for the
+// openCommand field where users type things like:
+//   xdg-open "obsidian://open?path={pathUri}"
+function shellSplit(input) {
+  var s = String(input || "")
+  var out = []
+  var current = ""
+  var quote = null
+  var haveToken = false
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charAt(i)
+    if (quote) {
+      if (c === quote) { quote = null }
+      else if (c === "\\" && quote === "\"" && i + 1 < s.length) {
+        current += s.charAt(++i)
+      } else { current += c }
+      continue
+    }
+    if (c === "\"" || c === "'") { quote = c; haveToken = true; continue }
+    if (c === " " || c === "\t" || c === "\n") {
+      if (haveToken) { out.push(current); current = ""; haveToken = false }
+      continue
+    }
+    current += c
+    haveToken = true
+  }
+  if (haveToken) out.push(current)
+  return out
+}
+
+// Join an argv array back into a shell-like display string. Arguments
+// containing whitespace or quote chars get double-quoted; embedded double
+// quotes are backslash-escaped.
+function shellJoin(argv) {
+  if (!Array.isArray(argv)) return ""
+  return argv.map(function(arg) {
+    var s = String(arg == null ? "" : arg)
+    if (s.length === 0) return "\"\""
+    if (/[\s"'\\]/.test(s)) return "\"" + s.replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\""
+    return s
+  }).join(" ")
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     expandPath: expandPath,
