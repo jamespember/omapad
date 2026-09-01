@@ -230,7 +230,8 @@ Item {
               opacity: root.toastMessage.length > 0 ? 0.7 : 0
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
-              anchors.verticalCenter: parent.verticalCenter
+              height: Style.space(22)
+              verticalAlignment: Text.AlignVCenter
               rightPadding: Style.space(4)
               Behavior on opacity {
                 NumberAnimation { duration: 200 }
@@ -240,21 +241,26 @@ Item {
             // Open note file (xdg-open — Obsidian for .md, editor otherwise).
             Rectangle {
               id: openFileBtn
-              anchors.verticalCenter: parent.verticalCenter
-              height: Style.space(24)
-              width: Style.space(28)
+              height: Style.space(22)
+              width: openFileLabel.width + Style.space(16)
               radius: root.cornerRadius
               color: openFileMouse.containsMouse
                 ? Util.alpha(root.border, 0.35)
                 : "transparent"
+              border.color: Util.alpha(root.border, 0.4)
+              border.width: 1
 
               Text {
+                id: openFileLabel
                 anchors.centerIn: parent
-                text: "\uF15C"  // nf-fa-file_text_o
-                color: root.foreground
-                opacity: openFileMouse.containsMouse ? 1.0 : 0.65
+                // Material Design nerd font glyph — same range clipboard/emojis use.
+                // 󰈔 = mdi-file-document (U+F0214)
+                text: "󰈔"
+                color: openFileMouse.containsMouse
+                  ? root.selectedText
+                  : root.foreground
                 font.family: root.fontFamily
-                font.pixelSize: Style.font.title
+                font.pixelSize: Style.font.body
               }
 
               MouseArea {
@@ -269,21 +275,25 @@ Item {
             // Open the note's parent directory in the file manager.
             Rectangle {
               id: openFolderBtn
-              anchors.verticalCenter: parent.verticalCenter
-              height: Style.space(24)
-              width: Style.space(28)
+              height: Style.space(22)
+              width: openFolderLabel.width + Style.space(16)
               radius: root.cornerRadius
               color: openFolderMouse.containsMouse
                 ? Util.alpha(root.border, 0.35)
                 : "transparent"
+              border.color: Util.alpha(root.border, 0.4)
+              border.width: 1
 
               Text {
+                id: openFolderLabel
                 anchors.centerIn: parent
-                text: "\uF07C"  // nf-fa-folder_open_o
-                color: root.foreground
-                opacity: openFolderMouse.containsMouse ? 1.0 : 0.65
+                // 󰝰 = mdi-folder-open (U+F0770)
+                text: "󰝰"
+                color: openFolderMouse.containsMouse
+                  ? root.selectedText
+                  : root.foreground
                 font.family: root.fontFamily
-                font.pixelSize: Style.font.title
+                font.pixelSize: Style.font.body
               }
 
               MouseArea {
