@@ -1,5 +1,7 @@
 # Omapad
 
+![Omapad](preview.png)
+
 A lightning-fast scratchpad overlay for [Omarchy](https://github.com/basecamp/omarchy). One keystroke to summon, one to hide. Text on the left, freehand sketch on the right. Both persist to disk.
 
 ## Install
