@@ -49,7 +49,9 @@ Item {
   }
 
   function applyPreset(preset) {
-    draftOpenCommand = Storage.shellJoin(preset.value)
+    var joined = Storage.shellJoin(preset.value)
+    draftOpenCommand = joined
+    openCommandField.text = joined  // property→text binding is severed after first assignment; drive text directly
   }
 
   function save() {
@@ -122,7 +124,8 @@ Item {
           font.pixelSize: Style.font.body
           selectByMouse: true
           activeFocusOnPress: true
-          text: root.draftNotePath
+          // No `text: root.draftNotePath` binding — hydrate/applyPreset drive
+          // text directly and onTextChanged is the only path back to the draft.
           onTextChanged: root.draftNotePath = text
           Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Escape) { root.cancel(); event.accepted = true }
@@ -217,7 +220,8 @@ Item {
           font.pixelSize: Style.font.body
           selectByMouse: true
           activeFocusOnPress: true
-          text: root.draftOpenCommand
+          // Text is driven directly by hydrate() and applyPreset(); this
+          // handler is the only path back into the draft property.
           onTextChanged: root.draftOpenCommand = text
           Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Escape) { root.cancel(); event.accepted = true }
