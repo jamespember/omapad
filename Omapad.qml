@@ -35,7 +35,11 @@ Item {
   property string shellConfigPath: home + "/.config/omarchy/shell.json"
   property string defaultNotePath: home + "/.local/state/omapad/note.txt"
   property string sketchPath: home + "/.local/state/omapad/sketch.json"
-  property string notePath: defaultNotePath
+  // Empty until shell.json load resolves via applySettings so we don't
+  // accidentally read from or write to defaultNotePath while a user's
+  // custom path is still pending. onLoadFailed on shellConfigFile falls
+  // back to defaultNotePath if no config exists.
+  property string notePath: ""
   property string copyTextTmpPath: "/tmp/omapad-copy-text.txt"
   property string copySketchTmpPath: "/tmp/omapad-copy-sketch.png"
 
@@ -167,9 +171,9 @@ Item {
 
   Process { id: mkdirProc; running: false }
   function ensureDirs() {
-    mkdirProc.command = ["mkdir", "-p",
-      Storage.dirname(root.notePath),
-      Storage.dirname(root.sketchPath)]
+    var dirs = [Storage.dirname(root.sketchPath)]
+    if (root.notePath.length > 0) dirs.push(Storage.dirname(root.notePath))
+    mkdirProc.command = ["mkdir", "-p"].concat(dirs)
     mkdirProc.running = true
   }
   Component.onCompleted: ensureDirs()

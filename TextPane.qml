@@ -38,16 +38,25 @@ Item {
   FileView {
     id: noteFile
     path: root.host ? root.host.notePath : ""
-    watchChanges: false
+    watchChanges: true
     atomicWrites: true
     printErrors: false
     onLoaded: {
       var content = text()
       root.loaded = true
       if (textEdit.text !== content) {
+        var cursor = textEdit.cursorPosition
         textEdit.text = content
+        textEdit.cursorPosition = Math.min(cursor, content.length)
         if (root.host) root.host.textContent = content
       }
+    }
+    onFileChanged: {
+      // Skip while the user has unsaved edits — otherwise we'd clobber them
+      // when saveTimer next fires. Our own writes are safe: the reload sees
+      // identical text and no-ops via the onLoaded diff check above.
+      if (saveTimer.running) return
+      reload()
     }
     onLoadFailed: {
       root.loaded = true
